@@ -1,0 +1,92 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity basys3_fifo8x8 is
+    Port ( clk : in STD_LOGIC;
+           btn : in STD_LOGIC_VECTOR (4 downto 0);
+           sw : in STD_LOGIC_VECTOR (15 downto 0);
+           led : out STD_LOGIC_VECTOR (15 downto 0);
+           an : out STD_LOGIC_VECTOR (3 downto 0);
+           cat : out STD_LOGIC_VECTOR (6 downto 0));
+end basys3_fifo8x8;
+
+architecture Behavioral of basys3_fifo8x8 is
+
+component debouncer is
+    Port (clk: in std_logic;
+          btn: in std_logic;
+          en: out std_logic);
+end component;
+
+component fifo_control is
+    Port (clk : in STD_LOGIC;
+        rst : in STD_LOGIC;
+        rd : in STD_LOGIC;
+        wr : in STD_LOGIC;
+        rdinc : out STD_LOGIC;
+        wrinc : out STD_LOGIC;
+        empty : out STD_LOGIC;
+        full : out STD_LOGIC);
+end component;
+
+component fifo8x8 is
+    Port (clk : in STD_LOGIC;
+        rst : in STD_LOGIC;
+        data_in : in STD_LOGIC_VECTOR (7 downto 0);
+        wrinc : in STD_LOGIC;
+        rdinc : in STD_LOGIC;
+        data_out : out STD_LOGIC_VECTOR (7 downto 0));
+end component;
+
+component display_7seg is
+    Port (digit0 : in STD_LOGIC_VECTOR (3 downto 0);
+        digit1 : in STD_LOGIC_VECTOR (3 downto 0);
+        digit2 : in STD_LOGIC_VECTOR (3 downto 0);
+        digit3 : in STD_LOGIC_VECTOR (3 downto 0);
+        clk : in STD_LOGIC;
+        cat : out STD_LOGIC_VECTOR (6 downto 0);
+        an : out STD_LOGIC_VECTOR (3 downto 0));
+end component;
+
+signal rd_pulse, wr_pulse : std_logic;
+signal rdinc_s, wrinc_s : std_logic;
+signal empty_s, full_s : std_logic;
+signal fifo_out : std_logic_vector(7 downto 0);
+
+begin
+
+db_rd: debouncer port map(clk => clk, btn => btn(1), en => rd_pulse);
+db_wr: debouncer port map(clk => clk, btn => btn(4), en => wr_pulse);
+
+ctrl_inst: fifo_control port map(
+    clk => clk,
+    rst => btn(2),
+    rd => rd_pulse,
+    wr => wr_pulse,
+    rdinc => rdinc_s,
+    wrinc => wrinc_s,
+    empty => empty_s,
+    full => full_s);
+
+dp_inst: fifo8x8 port map(
+    clk => clk,
+    rst => btn(2),
+    data_in => sw(7 downto 0),
+    wrinc => wrinc_s,
+    rdinc => rdinc_s,
+    data_out => fifo_out);
+
+disp_inst: display_7seg port map(
+    digit3 => sw(7 downto 4),
+    digit2 => sw(3 downto 0),
+    digit1 => fifo_out(7 downto 4),
+    digit0 => fifo_out(3 downto 0),
+    clk => clk,
+    cat => cat,
+    an => an);
+
+led(0) <= full_s;
+led(1) <= empty_s;
+led(15 downto 2) <= (others => '0');
+
+end Behavioral;
