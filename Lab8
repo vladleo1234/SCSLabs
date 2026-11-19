@@ -90,3 +90,485 @@ led(1) <= empty_s;
 led(15 downto 2) <= (others => '0');
 
 end Behavioral;
+
+
+
+
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer: 
+-- 
+-- Create Date: 11/19/2026 02:10:31 PM
+-- Design Name: 
+-- Module Name: fifo_control - Behavioral
+-- Project Name: 
+-- Target Devices: 
+-- Tool Versions: 
+-- Description: 
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx leaf cells in this code.
+--library UNISIM;
+--use UNISIM.VComponents.all;
+
+entity fifo_control is
+    Port ( clk : in STD_LOGIC;
+           rst : in STD_LOGIC;
+           rd : in STD_LOGIC;
+           wr : in STD_LOGIC;
+           rdinc : out STD_LOGIC;
+           wrinc : out STD_LOGIC;
+           empty : out STD_LOGIC;
+           full : out STD_LOGIC);
+end fifo_control;
+
+architecture Behavioral of fifo_control is
+    signal count : unsigned(3 downto 0) := (others => '0');
+    signal empty_int : STD_LOGIC;
+    signal full_int : STD_LOGIC;
+    signal rdinc_int : STD_LOGIC;
+    signal wrinc_int : STD_LOGIC;
+begin
+    empty_int <= '1' when count = 0 else '0';
+    full_int  <= '1' when count = 8 else '0';
+    
+    rdinc_int <= '1' when (rd = '1' and empty_int = '0') else '0';
+   wrinc_int <= '1' when (wr = '1' and full_int = '0')  else '0';
+    
+   empty <= empty_int;
+  full  <= full_int;
+   rdinc <= rdinc_int;
+   wrinc <= wrinc_int;
+
+process(clk)
+    begin
+      if rising_edge(clk) then
+        if rst = '1' then
+          count <= (others => '0');
+         else
+            if wrinc_int = '1' and rdinc_int = '0' then
+              count <= count + 1;
+            elsif rdinc_int = '1' and wrinc_int = '0' then
+               count <= count - 1;
+             end if;
+        end if;
+     end if;
+    end process;
+end Behavioral;
+
+
+
+
+
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer: 
+-- 
+-- Create Date: 11/19/2026 02:19:04 PM
+-- Design Name: 
+-- Module Name: fifo8x8 - Behavioral
+-- Project Name: 
+-- Target Devices: 
+-- Tool Versions: 
+-- Description: 
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx leaf cells in this code.
+--library UNISIM;
+--use UNISIM.VComponents.all;
+
+entity fifo8x8 is
+    Port ( clk : in STD_LOGIC;
+           rst : in STD_LOGIC;
+           data_in : in STD_LOGIC_VECTOR (7 downto 0);
+           wrinc : in STD_LOGIC;
+           rdinc : in STD_LOGIC;
+           data_out : out STD_LOGIC_VECTOR (7 downto 0));
+end fifo8x8;
+
+architecture Behavioral of fifo8x8 is
+type reg_array_t is array (0 to 7) of STD_LOGIC_VECTOR(7 downto 0);
+    signal fifo    : reg_array_t := (others => (others => '0'));
+    signal wrptr   : unsigned(2 downto 0) := (others => '0');
+    signal rdptr   : unsigned(2 downto 0) := (others => '0');
+    signal dec_out : STD_LOGIC_VECTOR(7 downto 0);
+    signal mux_out : STD_LOGIC_VECTOR(7 downto 0);
+begin
+process(clk)
+    begin
+      if rising_edge(clk) then
+         if rst = '1' then
+          wrptr <= (others => '0');
+         elsif wrinc = '1' then
+            wrptr <= wrptr + 1;
+         end if;
+      end if;
+    end process;
+    
+process(clk)
+    begin
+     if rising_edge(clk) then
+       if rst = '1' then
+         rdptr <= (others => '0');
+        elsif rdinc = '1' then
+           rdptr <= rdptr + 1;
+       end if;
+     end if;
+ end process;
+    
+process(wrptr)
+    begin
+       dec_out <= (others => '0');
+      dec_out(to_integer(wrptr)) <= '1';
+end process;
+    
+process(clk)
+    begin
+     if rising_edge(clk) then
+       if rst = '1' then
+         fifo <= (others => (others => '0'));
+       else
+         for i in 0 to 7 loop
+           if (dec_out(i) = '1' and wrinc = '1') then
+             fifo(i) <= data_in;
+            end if;
+         end loop;
+       end if;
+     end if;
+end process;
+
+process(fifo, rdptr)
+    begin
+        mux_out <= fifo(to_integer(rdptr));
+    end process;
+
+process(clk)
+    begin
+      if rising_edge(clk) then
+        if rst = '1' then
+          data_out <= (others => '0');
+         elsif rdinc = '1' then
+           data_out <= mux_out;
+        end if;
+      end if;
+end process;
+end Behavioral;
+
+
+
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer: 
+-- 
+-- Create Date: 11/19/2026 02:10:31 PM
+-- Design Name: 
+-- Module Name: fifo_control - Behavioral
+-- Project Name: 
+-- Target Devices: 
+-- Tool Versions: 
+-- Description: 
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx leaf cells in this code.
+--library UNISIM;
+--use UNISIM.VComponents.all;
+
+
+entity Tb_fifo_full is
+end Tb_fifo_full;
+
+architecture Behavioral of Tb_fifo_full is
+    component fifo_control is
+        Port (
+            clk   : in  STD_LOGIC;
+            rst   : in  STD_LOGIC;
+            rd    : in  STD_LOGIC;
+            wr    : in  STD_LOGIC;
+            rdinc : out STD_LOGIC;
+            wrinc : out STD_LOGIC;
+            empty : out STD_LOGIC;
+            full  : out STD_LOGIC
+        );
+    end component;
+
+    component fifo8x8 is
+        Port (
+            clk      : in  STD_LOGIC;
+            rst      : in  STD_LOGIC;
+            data_in  : in  STD_LOGIC_VECTOR (7 downto 0);
+            wrinc    : in  STD_LOGIC;
+            rdinc    : in  STD_LOGIC;
+            data_out : out STD_LOGIC_VECTOR (7 downto 0)
+        );
+    end component;
+
+    signal clk      : STD_LOGIC := '0';
+    signal rst      : STD_LOGIC := '0';
+    signal rd       : STD_LOGIC := '0';
+    signal wr       : STD_LOGIC := '0';
+    signal rdinc    : STD_LOGIC;
+    signal wrinc    : STD_LOGIC;
+    signal empty    : STD_LOGIC;
+    signal full     : STD_LOGIC;
+    signal data_in  : STD_LOGIC_VECTOR(7 downto 0) := (others => '0');
+    signal data_out : STD_LOGIC_VECTOR(7 downto 0);
+begin
+    ctrl_inst: fifo_control port map (
+        clk   => clk,
+        rst   => rst,
+        rd    => rd,
+        wr    => wr,
+        rdinc => rdinc,
+        wrinc => wrinc,
+        empty => empty,
+        full  => full
+    );
+
+    dp_inst: fifo8x8 port map (
+        clk      => clk,
+        rst      => rst,
+        data_in  => data_in,
+        wrinc    => wrinc,
+        rdinc    => rdinc,
+        data_out => data_out
+    );
+
+    clk <= not clk after 5 ns;
+
+    stim: process
+    begin
+
+        rst <= '1';
+        wait for 20 ns;
+        wait until rising_edge(clk);
+        rst <= '0';
+        wait until rising_edge(clk);
+
+        
+        for i in 1 to 8 loop
+            data_in <= std_logic_vector(to_unsigned(i * 17, 8));
+            wr <= '1';
+            wait until rising_edge(clk);
+        end loop;
+        wr <= '0';
+        data_in <= (others => '0');
+        wait until rising_edge(clk);
+
+
+        data_in <= x"99";
+        wr <= '1';
+        wait until rising_edge(clk);
+        wr <= '0';
+        data_in <= (others => '0');
+        wait until rising_edge(clk);
+
+        
+        for i in 1 to 8 loop
+            rd <= '1';
+            wait until rising_edge(clk);
+        end loop;
+        rd <= '0';
+        wait until rising_edge(clk);
+
+      
+        rd <= '1';
+        wait until rising_edge(clk);
+        rd <= '0';
+        wait until rising_edge(clk);
+
+        for i in 1 to 5 loop
+            data_in <= std_logic_vector(to_unsigned(16#A0# + i, 8));
+            wr <= '1';
+            wait until rising_edge(clk);
+        end loop;
+        wr <= '0';
+
+        for i in 1 to 3 loop
+            rd <= '1';
+            wait until rising_edge(clk);
+        end loop;
+        rd <= '0';
+
+        for i in 1 to 5 loop
+            data_in <= std_logic_vector(to_unsigned(16#B0# + i, 8));
+            wr <= '1';
+            wait until rising_edge(clk);
+        end loop;
+        wr <= '0';
+        data_in <= (others => '0');
+        wait until rising_edge(clk);
+
+       
+        for i in 1 to 2 loop
+            data_in <= std_logic_vector(to_unsigned(16#C0# + i, 8));
+            rd <= '1';
+            wr <= '1';
+            wait until rising_edge(clk);
+        end loop;
+        rd <= '0';
+        wr <= '0';
+        data_in <= (others => '0');
+
+       
+        for i in 1 to 7 loop
+            rd <= '1';
+            wait until rising_edge(clk);
+        end loop;
+        rd <= '0';
+
+        wait;
+    end process;
+end Behavioral;
+
+
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity Tb_fifo_control is
+end Tb_fifo_control;
+
+architecture Behavioral of Tb_fifo_control is
+    component fifo_control is
+        Port (
+            clk   : in  STD_LOGIC;
+            rst   : in  STD_LOGIC;
+            rd    : in  STD_LOGIC;
+            wr    : in  STD_LOGIC;
+            rdinc : out STD_LOGIC;
+            wrinc : out STD_LOGIC;
+            empty : out STD_LOGIC;
+            full  : out STD_LOGIC
+        );
+    end component;
+
+    signal clk   : STD_LOGIC := '0';
+    signal rst   : STD_LOGIC := '0';
+    signal rd    : STD_LOGIC := '0';
+    signal wr    : STD_LOGIC := '0';
+    signal rdinc : STD_LOGIC;
+    signal wrinc : STD_LOGIC;
+    signal empty : STD_LOGIC;
+    signal full  : STD_LOGIC;
+begin
+    uut: fifo_control port map (
+        clk   => clk,
+        rst   => rst,
+        rd    => rd,
+        wr    => wr,
+        rdinc => rdinc,
+        wrinc => wrinc,
+        empty => empty,
+        full  => full
+    );
+
+    clk <= not clk after 5 ns;
+
+    stim: process
+    begin
+
+        rst <= '1';
+        wait for 20 ns;
+        wait until rising_edge(clk);
+        rst <= '0';
+
+
+        wait until rising_edge(clk);
+
+        
+        rd <= '1'; wr <= '0';
+        wait until rising_edge(clk);
+        rd <= '0';
+
+        
+        wait until rising_edge(clk);
+        rd <= '1'; wr <= '1';
+        wait until rising_edge(clk);
+
+        
+        wait until rising_edge(clk);
+        rd <= '0'; wr <= '0';
+
+       
+        for i in 1 to 7 loop
+            wait until rising_edge(clk);
+            wr <= '1';
+        end loop;
+        wait until rising_edge(clk);
+        wr <= '0';
+
+        
+        wait until rising_edge(clk);
+        wr <= '1';
+        wait until rising_edge(clk);
+        wr <= '0';
+
+        
+        wait until rising_edge(clk);
+        rd <= '1'; wr <= '1';
+        wait until rising_edge(clk);
+        rd <= '0'; wr <= '0';
+
+       
+        for i in 1 to 7 loop
+            wait until rising_edge(clk);
+            rd <= '1';
+        end loop;
+        wait until rising_edge(clk);
+        rd <= '0';
+
+        wait;
+    end process;
+end Behavioral;
